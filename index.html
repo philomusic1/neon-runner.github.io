@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Neon Runner — Shop Fixes</title>
+    <title>Neon Runner</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
@@ -59,7 +59,7 @@
         .upgrade-card .small { font-size:13px; color:#ffff00; font-weight:bold; }
         .upgrade-btn { padding:8px 12px; background:linear-gradient(45deg,#00ff41,#00cc33); border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
         .upgrade-btn:disabled { background:#444; color:#888; cursor:not-allowed; }
-        .health-bar { width:150px; height:20px; background:rgba(255,0,0,0.3); border:2px solid #ff0000; border-radius:10px; overflow:hidden; }
+        .health-bar { width:150px; height:20px; background:rgba(255,0,0,0.3); border:2px solid #ff0000; border-radius:10px; overflow:hidden; display:inline-block; }
         .health-fill { height:100%; background:linear-gradient(90deg,#ff0000,#ff6600,#ffff00); transition:width 0.25s ease; }
         #controls { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); padding:12px 22px; border-radius:12px; border:2px solid rgba(0,255,255,0.4); pointer-events:auto; z-index:100; }
         .stat-value { color:#00ff00; font-weight:bold; }
@@ -93,6 +93,16 @@
             </div>
         </div>
 
+        <!-- Upgrade Shop Modal -->
+        <div id="upgradeShop" aria-hidden="true">
+            <h2 style="color:#00ff41; margin-bottom:8px;">🔧 SHIP UPGRADES</h2>
+            <p style="color:#00ffff; margin-bottom:8px;">Upgrade Points: <span id="upgradePointsDisplay" class="stat-value">0</span></p>
+            <div id="upgradeGrid"></div>
+            <div style="margin-top:10px;">
+                <button id="closeShopBtn">CLOSE & RETURN TO MENU</button>
+            </div>
+        </div>
+
         <canvas id="gameCanvas" tabindex="0"></canvas>
 
         <div id="ui">
@@ -100,9 +110,9 @@
                 <h3 style="color:#00ffff; margin-bottom:10px;">📊 SYSTEM STATUS</h3>
                 <div style="margin-bottom:10px;">
                     Health:
-                    <span class="health-bar" style="margin-left:10px; vertical-align:middle;">
+                    <div class="health-bar" style="margin-left:10px; vertical-align:middle;">
                         <div id="healthBar" class="health-fill" style="width:100%"></div>
-                    </span>
+                    </div>
                 </div>
                 <div style="margin-bottom:8px;">Speed: <span id="speedDisplay" class="stat-value">100</span> km/h</div>
                 <div style="margin-bottom:8px;">Distance: <span id="distanceDisplay" class="stat-value">0</span> m</div>
@@ -119,22 +129,12 @@
         </div>
 
         <div id="controls">
-            🎮 <strong>ARROW KEYS / WASD</strong> to move • <strong>SPACE</strong> for boost • Collect 💎 data fragments • Avoid ⚠️ obstacles
-        </div>
-    </div>
-
-    <!-- Upgrade Shop Modal -->
-    <div id="upgradeShop" aria-hidden="true">
-        <h2 style="color:#00ff41; margin-bottom:8px;">🔧 SHIP UPGRADES</h2>
-        <p style="color:#00ffff; margin-bottom:8px;">Upgrade Points: <span id="upgradePointsDisplay" class="stat-value">0</span></p>
-        <div id="upgradeGrid"></div>
-        <div style="margin-top:10px;">
-            <button id="closeShopBtn">CLOSE & RETURN TO MENU</button>
+            🎮 <strong>W/S or ↑/↓ ARROWS</strong> to move • <strong>SPACE</strong> for boost • Collect 💎 data fragments • Avoid ⚠️ obstacles
         </div>
     </div>
 
     <script>
-    // ========== NeonRunner with applied-upgrade & health fixes ==========
+    // ========== NeonRunner with fixes ==========
     class NeonRunner {
         constructor() {
             this.canvas = document.getElementById('gameCanvas');
@@ -217,7 +217,7 @@
 
             document.addEventListener('keydown', e => {
                 this.keys[e.code] = true;
-                if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) e.preventDefault();
+                if (['ArrowUp','ArrowDown','Space','KeyW','KeyS'].includes(e.code)) e.preventDefault();
             });
             document.addEventListener('keyup', e => { this.keys[e.code] = false; });
         }
@@ -377,6 +377,7 @@
 
             document.getElementById('gameTitle').style.display = 'none';
             document.getElementById('gameOver').style.display = 'none';
+            this.upgradeShopEl.style.display = 'none';
 
             this.updateUI();
         }
@@ -406,8 +407,7 @@
 
         updatePlayer(dt) {
             const speed = this.player.speed;
-            if (this.keys['ArrowLeft'] || this.keys['KeyA']) this.player.x -= speed * dt;
-            if (this.keys['ArrowRight'] || this.keys['KeyD']) this.player.x += speed * dt;
+            // Only W/S and Up/Down arrows for movement
             if (this.keys['ArrowUp'] || this.keys['KeyW']) this.player.y -= speed * dt;
             if (this.keys['ArrowDown'] || this.keys['KeyS']) this.player.y += speed * dt;
 
@@ -492,7 +492,7 @@
             switch(t) {
                 case 'laser': obs = { type:'laser', x:this.canvas.width, y:Math.random()*(this.canvas.height-100), width:10, height:100, damage:20, color:'#ff0000' }; break;
                 case 'mine': obs = { type:'mine', x:this.canvas.width, y:Math.random()*(this.canvas.height-30), width:30, height:30, damage:30, pulse:0, color:'#ff6600' }; break;
-                case 'barrier': obs = { type:'barrier', x:this.canvas.width, y:0, width:20, height:this.canvas.height, gap:Math.random()*(this.canvas.height-150)+75, gapSize:120 - (this.level*5), damage:40, color:'#00ff00' }; break;
+                case 'barrier': obs = { type:'barrier', x:this.canvas.width, y:0, width:20, height:this.canvas.height, gap:Math.random()*(this.canvas.height-150)+75, gapSize:Math.max(80, 120 - (this.level*5)), damage:40, color:'#00ff00' }; break;
                 case 'drone': obs = { type:'drone', x:this.canvas.width, y:Math.random()*(this.canvas.height-40), width:40, height:20, damage:25, vy:(Math.random()-0.5)*100, color:'#ff0080' }; break;
             }
             this.obstacles.push(obs);
@@ -512,7 +512,7 @@
 
         checkCollisions() {
             for (const o of this.obstacles) {
-                if (this.checkCollision(this.player, o)) {
+                if (this.checkCollisionWithObstacle(this.player, o)) {
                     if (this.player.invulnerable <= 0) { this.damagePlayer(o.damage); this.addExplosion(this.player.x, this.player.y); }
                 }
             }
@@ -528,6 +528,28 @@
 
         checkCollision(a,b) {
             return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+        }
+
+        checkCollisionWithObstacle(player, obstacle) {
+            if (obstacle.type === 'barrier') {
+                // Check collision with top part
+                const topCollision = player.x < obstacle.x + obstacle.width && 
+                                   player.x + player.width > obstacle.x && 
+                                   player.y < obstacle.gap && 
+                                   player.y + player.height > 0;
+                
+                // Check collision with bottom part
+                const bottomStart = obstacle.gap + obstacle.gapSize;
+                const bottomCollision = player.x < obstacle.x + obstacle.width && 
+                                      player.x + player.width > obstacle.x && 
+                                      player.y < this.canvas.height && 
+                                      player.y + player.height > bottomStart;
+                
+                return topCollision || bottomCollision;
+            } else {
+                // Regular collision for all other obstacles
+                return this.checkCollision(player, obstacle);
+            }
         }
 
         damagePlayer(damage) {
@@ -597,16 +619,20 @@
         }
 
         updateUI() {
-            document.getElementById('speedDisplay').textContent = Math.floor(this.gameSpeed * 50);
+            // Show actual player speed, not game speed
+            document.getElementById('speedDisplay').textContent = Math.floor(this.player.speed);
             document.getElementById('distanceDisplay').textContent = Math.floor(this.distance);
             document.getElementById('levelDisplay').textContent = this.level;
             document.getElementById('scoreDisplay').textContent = Math.floor(this.score);
             document.getElementById('highScoreDisplay').textContent = this.highScore;
             document.getElementById('dataDisplay').textContent = this.dataCollected;
-            document.getElementById('multiplierDisplay').textContent = this.scoreMultiplier + 'x';
-            const healthPercent = (this.player.maxHealth > 0) ? (this.player.health / this.player.maxHealth) * 100 : 0;
+            document.getElementById('multiplierDisplay').textContent = Math.round(this.scoreMultiplier * 10) / 10 + 'x';
+            
+            // Fix health bar calculation
+            const healthPercent = (this.player.maxHealth > 0) ? Math.max(0, (this.player.health / this.player.maxHealth) * 100) : 0;
             const hb = document.getElementById('healthBar');
-            if (hb) hb.style.width = Math.max(0, Math.min(100, healthPercent)) + '%';
+            if (hb) hb.style.width = Math.min(100, healthPercent) + '%';
+            
             if (this.upgradePointsDisplay) this.upgradePointsDisplay.textContent = this.upgradePoints;
         }
 
@@ -629,14 +655,48 @@
         drawPlayer() {
             this.ctx.save();
             if (this.player.invulnerable > 0) this.ctx.globalAlpha = Math.sin(Date.now() * 0.02) > 0 ? 1 : 0.3;
-            this.ctx.fillStyle = '#00ffff'; this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
-            this.ctx.shadowBlur = 20; this.ctx.shadowColor = '#00ffff'; this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
-            this.ctx.fillStyle = '#ffffff'; this.ctx.fillRect(this.player.x + 30, this.player.y + 5, 8, 4); this.ctx.fillRect(this.player.x + 30, this.player.y + 11, 8, 4);
-            if (this.keys['Space'] && this.player.boost > 0) {
-                const trailLength = 20;
-                this.ctx.fillStyle = '#ff6600'; this.ctx.fillRect(this.player.x - trailLength, this.player.y + 6, trailLength, 8);
-                this.ctx.fillStyle = '#ffff00'; this.ctx.fillRect(this.player.x - trailLength + 5, this.player.y + 8, trailLength - 5, 4);
+            
+            // Draw magnet range (subtle) if upgraded
+            if (this.upgrades.magnet > 1) {
+                this.ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 
+                           this.player.magnetRange, 0, Math.PI * 2);
+                this.ctx.stroke();
             }
+            
+            // Ship color changes with upgrades
+            const shipColor = this.upgrades.engine > 3 ? '#00ccff' : '#00ffff';
+            this.ctx.fillStyle = shipColor;
+            this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+            
+            // Enhanced glow with upgrades
+            this.ctx.shadowBlur = 20 + (this.upgrades.engine - 1) * 3;
+            this.ctx.shadowColor = shipColor;
+            this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+            
+            // Ship details
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(this.player.x + 30, this.player.y + 5, 8, 4);
+            this.ctx.fillRect(this.player.x + 30, this.player.y + 11, 8, 4);
+            
+            // Armor plating for upgraded ships
+            if (this.upgrades.armor > 2) {
+                this.ctx.fillStyle = '#ff0080';
+                this.ctx.fillRect(this.player.x + 2, this.player.y + 2, 36, 2);
+                this.ctx.fillRect(this.player.x + 2, this.player.y + 16, 36, 2);
+            }
+            
+            // Enhanced engine trail
+            if (this.keys['Space'] && this.player.boost > 1) {
+                const trailLength = 20 + (this.upgrades.boost - 1) * 3;
+                this.ctx.fillStyle = '#ff6600';
+                this.ctx.fillRect(this.player.x - trailLength, this.player.y + 6, trailLength, 8);
+                this.ctx.fillStyle = '#ffff00';
+                this.ctx.fillRect(this.player.x - trailLength + 5, this.player.y + 8, trailLength - 5, 4);
+            }
+            
             this.ctx.restore();
         }
 
